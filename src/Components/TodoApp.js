@@ -1,39 +1,73 @@
-import React, { useState } from 'react';
-import './Styles.css'; // Import the custom CSS file
+import React, { useState, useEffect } from 'react';
+import './Styles.css';
 
 const TodoApp = () => {
   const [tasks, setTasks] = useState([]);
   const [newTask, setNewTask] = useState('');
   const [editedTask, setEditedTask] = useState(null);
 
+  useEffect(() => {
+    fetch('http://localhost:5000/tasks')
+      .then((response) => response.json())
+      .then((data) => setTasks(data));
+  }, []);
+
   const addTask = () => {
     if (newTask !== '') {
-      setTasks([...tasks, newTask]);
-      setNewTask('');
+      fetch('http://localhost:5000/tasks', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ task: newTask }),
+      })
+        .then((response) => response.json())
+        .then((data) => {
+          setTasks([...tasks, data]);
+          setNewTask('');
+        });
     }
   };
 
-  const removeTask = (index) => {
-    const updatedTasks = tasks.filter((_, i) => i !== index);
-    setTasks(updatedTasks);
+  const removeTask = (id) => {
+    fetch(`http://localhost:5000/tasks/${id}`, {
+      method: 'DELETE',
+    }).then(() => {
+      const updatedTasks = tasks.filter((task) => task.id !== id);
+      setTasks(updatedTasks);
+    });
   };
 
-  const editTask = (index) => {
-    const taskToEdit = tasks[index];
-    setEditedTask({ index, task: taskToEdit });
+  const editTask = (id) => {
+    const taskToEdit = tasks.find((task) => task.id === id);
+    setEditedTask({ id, task: taskToEdit.task });
   };
 
-  const saveEditedTask = (index, editedText) => {
-    const updatedTasks = [...tasks];
-    updatedTasks[index] = editedText;
-    setTasks(updatedTasks);
-    setEditedTask(null);
+  const saveEditedTask = (id, editedText) => {
+    fetch(`http://localhost:5000/tasks/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ task: editedText }),
+    }).then(() => {
+      const updatedTasks = tasks.map((task) =>
+        task.id === id ? { ...task, task: editedText } : task
+      );
+      setTasks(updatedTasks);
+      setEditedTask(null);
+    });
   };
 
-  const deleteAllTasks = () => {
-    setTasks([]);
+  const deleteAllTasks = (id) => {
+    fetch(`http://localhost:5000/tasks/${id}`, {
+      method: 'DELETE',
+    }).then(() => {
+      const updatedTasks = tasks.filter((task) => task.id !== id);
+      setTasks(updatedTasks);
+    });
   };
-
+          
   return (
     <div className="todo-app">
       <h1 className="heading">TO-DO LIST</h1>
@@ -41,7 +75,7 @@ const TodoApp = () => {
         <input
           type="text"
           className="todo-input"
-          placeholder="ADD A TASK...!"
+          placeholder="Add a task...!"
           value={newTask}
           onChange={(e) => setNewTask(e.target.value)}
         />
@@ -52,30 +86,30 @@ const TodoApp = () => {
       <ul>
       {tasks.length > 0 && (
         <button className="delete-all-button" onClick={deleteAllTasks}>
-          <i class="fa-solid fa-trash-can-arrow-up"></i>
+        <i class="fa-solid fa-trash"></i>
         </button>
       )}
 
         {tasks.length === 0 ? (
-          <div>NOTHING TO DISPLAY.</div>
+          <div>NO TASKS TO DISPLAY.</div>
         ) : (
-          tasks.map((task, index) => (
-            <li key={index} className="flex justify-between task-item">
-              {editedTask && editedTask.index === index ? (
+          tasks.map((task) => (
+            <li key={task.id} className="flex justify-between task-item">
+              {editedTask && editedTask.id === task.id ? (
                 <input
                   type="text"
                   value={editedTask.task}
                   onChange={(e) => setEditedTask({ ...editedTask, task: e.target.value })}
-                  onBlur={() => saveEditedTask(index, editedTask.task)}
+                  onBlur={() => saveEditedTask(task.id, editedTask.task)}
                 />
               ) : (
-                <div>{task}</div>
+                <div>{task.task}</div>
               )}
               <div className="flex">
-                <button className="edit-button" onClick={() => editTask(index)}>
+                <button className="edit-button" onClick={() => editTask(task.id)}>
                 <i class="fa-solid fa-pen-to-square"></i>
                 </button>
-                <button className="remove-button" onClick={() => removeTask(index)}>
+                <button className="remove-button" onClick={() => removeTask(task.id)}>
                 <i class="fa-regular fa-trash-can"></i>
                 </button>
               </div>

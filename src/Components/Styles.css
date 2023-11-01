@@ -53,6 +53,7 @@ body {
   margin-right: 5%;
   display: flex;
   justify-content: space-between;
+  box-shadow: inset;
 }
 .remove-button {
   color: red;
